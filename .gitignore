@@ -1,3 +1,5 @@
 .env
 /code
 /.claude
+__pycache__/
+vector_db/

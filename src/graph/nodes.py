@@ -170,29 +170,30 @@ def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     """
     Tool 디스패처 - 실제 tool 함수 호출
 
-    참고: react_tool_agent (1).py의 dispatch_tool
+    참고:
+    - react_tool_agent (1).py의 dispatch_tool (lines 101-117)
+    - multiple-tools-with-template/tool_registry.py의 call 메서드
     """
-    # TODO: 실제 tool 구현으로 교체
-    if name == "search_movies":
-        return {
-            "ok": True,
-            "tool": name,
-            "result": f"'{args['query']}' 검색 결과: [모의 데이터] 인터스텔라, 인셉션"
-        }
-    elif name == "recommend_movies":
-        return {
-            "ok": True,
-            "tool": name,
-            "result": f"선호도 '{args['preferences']}' 기반 추천: [모의 데이터] 다크나이트, 매트릭스"
-        }
-    elif name == "search_rag":
-        return {
-            "ok": True,
-            "tool": name,
-            "result": f"'{args['query']}' RAG 검색 결과: [모의 데이터] 관련 문서 컨텍스트"
-        }
-    else:
+    # tools/ 폴더에서 실제 함수 임포트
+    from ..tools.movie_tools import MOVIE_TOOLS
+    from ..tools.search_tools import SEARCH_TOOLS
+
+    # Tool 레지스트리 (모든 tool 통합)
+    TOOL_REGISTRY = {
+        **MOVIE_TOOLS,
+        **SEARCH_TOOLS,
+    }
+
+    # Tool 실행
+    if name not in TOOL_REGISTRY:
         return {"ok": False, "error": f"Unknown tool: {name}"}
+
+    try:
+        tool_func = TOOL_REGISTRY[name]
+        result = tool_func(**args)
+        return {"ok": True, "tool": name, "result": result}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "tool": name}
 
 
 # ==========================================
