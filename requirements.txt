@@ -1,0 +1,29 @@
+# Core Dependencies
+python-dotenv
+pydantic
+
+# OpenAI & LangChain
+openai
+langgraph
+langchain
+langchain-community
+langchain-text-splitters
+langchain-openai
+
+# Vector Store
+faiss-cpu
+# chromadb  # alternative option
+
+# PDF Processing
+pypdf
+PyPDF2
+
+# Web Framework
+fastapi
+uvicorn[standard]
+gradio
+python-multipart
+aiofiles
+
+# Utilities
+numpy
