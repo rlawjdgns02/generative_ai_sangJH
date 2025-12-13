@@ -9,11 +9,11 @@ agent.py
 """
 
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.memory import MemorySaver
 from typing import Dict, Any, List
 
 from ..schemas import AgentState
-from .nodes import llm_node, tool_node, route_after_llm
+from ..memory.short_term import ShortTermMemory
+from .nodes import llm_node, tool_node, route_after_llm, reflection_node
 
 
 class MovieChatAgent:
@@ -33,8 +33,13 @@ class MovieChatAgent:
         Args:
             enable_memory: 대화 메모리 활성화 여부 (checkpointer 사용)
         """
-        self.checkpointer = MemorySaver() if enable_memory else None
+        # Short Term Memory 초기화
+        print(f"[MovieChatAgent] 메모리 시스템 초기화 중...")
+        self.short_term_memory = ShortTermMemory(enable=enable_memory)
+        self.checkpointer = self.short_term_memory.get_checkpointer()
+        print(f"[MovieChatAgent] Short Term Memory: {'활성화' if enable_memory else '비활성화'}")
         self.graph = self._build_graph()
+        print(f"[MovieChatAgent] 그래프 빌드 완료")
 
     def _build_graph(self):
         """
@@ -50,22 +55,27 @@ class MovieChatAgent:
         # 노드 추가
         builder.add_node("llm", llm_node)
         builder.add_node("tool", tool_node)
+        builder.add_node("reflection", reflection_node)  # Reflection 노드 추가
 
         # 엔트리 포인트 설정
         builder.set_entry_point("llm")
 
-        # Conditional Edge: LLM → Tool or END
+        # Conditional Edge: LLM → Tool or Reflection or END
         builder.add_conditional_edges(
             "llm",
             route_after_llm,
             {
                 "tool": "tool",
+                "reflection": "reflection",
                 "END": END
             }
         )
 
         # Tool → LLM (ReAct loop)
         builder.add_edge("tool", "llm")
+        
+        # Reflection → END (메모리 저장 후 종료)
+        builder.add_edge("reflection", END)
 
         # 컴파일
         return builder.compile(checkpointer=self.checkpointer)
@@ -144,7 +154,9 @@ class MovieChatAgent:
             "user_query": user_message,
             "tool_result": None,
             "retrieved_contexts": [],
-            "final_answer": None
+            "final_answer": None,
+            "relevant_memories": [],  # 메모리 필드 초기화
+            "saved_memory_id": None
         }
 
         # checkpointer(MemorySaver)를 사용할 때는 thread_id 등 configurable 키가 필요함
