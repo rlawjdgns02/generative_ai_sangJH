@@ -40,9 +40,11 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
     # 관련 장기 메모리 검색 및 컨텍스트에 추가
     user_query = state.get("user_query", "")
     relevant_memories = []
+    print(f"[llm_node] 메모리 검색 시작 - 사용자 질문: {user_query[:50]}...")
     if user_query:
         relevant_memories = get_relevant_memories(user_query, top_k=3)
         if relevant_memories:
+            print(f"[llm_node] {len(relevant_memories)}개 관련 메모리 발견, 컨텍스트에 추가")
             memory_context = format_memories_for_context(relevant_memories)
             # 시스템 메시지에 메모리 컨텍스트 추가
             system_message_found = False
@@ -51,6 +53,7 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
                     messages[i] = msg.copy()
                     messages[i]["content"] = msg.get("content", "") + memory_context
                     system_message_found = True
+                    print(f"[llm_node] 시스템 메시지에 메모리 컨텍스트 추가됨")
                     break
             
             if not system_message_found:
@@ -59,6 +62,11 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
                     "role": "system",
                     "content": "당신은 영화 추천 AI 어시스턴트입니다.\n- 사용자의 영화 관련 질문에 친절하게 답변합니다.\n- 필요시 search_movies, recommend_movies, search_rag 도구를 활용합니다.\n- 구체적이고 유용한 정보를 제공합니다." + memory_context
                 })
+                print(f"[llm_node] 새로운 시스템 메시지 생성 (메모리 포함)")
+        else:
+            print(f"[llm_node] 관련 메모리 없음")
+    else:
+        print(f"[llm_node] 사용자 질문 없음, 메모리 검색 스킵")
 
     # Tool 정의 (나중에 tools/ 폴더에서 가져올 예정)
     tools = [
@@ -121,6 +129,7 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
     # Tool call이 있는 경우
     if msg.tool_calls:
         tool_call = msg.tool_calls[0]
+        print(f"[llm_node] Tool call 감지: {tool_call.function.name}")
         return {
             "messages": [msg.model_dump()],
             "tool_result": json.dumps(tool_call.model_dump()),
@@ -128,6 +137,7 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
         }
 
     # 최종 답변인 경우
+    print(f"[llm_node] 최종 답변 생성 완료 (길이: {len(msg.content) if msg.content else 0}자)")
     return {
         "messages": [msg.model_dump()],
         "tool_result": None,
@@ -145,9 +155,21 @@ def reflection_node(state: AgentState) -> Dict[str, Any]:
     
     참고: 메모리 시스템의 reflection 모듈 사용
     """
+    print(f"[reflection_node] Reflection 노드 실행 시작")
+    print(f"[reflection_node] State 확인:")
+    print(f"  - user_query: {state.get('user_query', '')[:50]}...")
+    print(f"  - final_answer 존재: {bool(state.get('final_answer'))}")
+    print(f"  - tool_result 존재: {bool(state.get('tool_result'))}")
+    print(f"  - retrieved_contexts 개수: {len(state.get('retrieved_contexts', []))}")
+    
     from ..memory.reflection import reflect_and_save
     
     saved_memory_id = reflect_and_save(state)
+    
+    if saved_memory_id:
+        print(f"[reflection_node] ✅ 메모리 저장 완료: {saved_memory_id}")
+    else:
+        print(f"[reflection_node] ⏭️  메모리 저장 스킵됨")
     
     return {
         "saved_memory_id": saved_memory_id
@@ -225,10 +247,20 @@ def route_after_llm(state: AgentState) -> str:
 
     참고: example.py의 route 함수
     """
+    tool_result = state.get("tool_result")
+    final_answer = state.get("final_answer")
+    
+    print(f"[route_after_llm] 라우팅 결정:")
+    print(f"  - tool_result 존재: {tool_result is not None}")
+    print(f"  - final_answer 존재: {final_answer is not None}")
+    
     # Tool call이 있으면 tool 노드로
-    if state.get("tool_result") is not None:
+    if tool_result is not None:
+        print(f"[route_after_llm] → 'tool' 노드로 라우팅")
         return "tool"
     # 최종 답변이 있으면 reflection 노드로 이동 (메모리 저장)
-    if state.get("final_answer"):
+    if final_answer:
+        print(f"[route_after_llm] → 'reflection' 노드로 라우팅 (메모리 저장)")
         return "reflection"
+    print(f"[route_after_llm] → 'END'로 라우팅")
     return "END"

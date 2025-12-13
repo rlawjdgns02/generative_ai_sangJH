@@ -55,8 +55,10 @@ class LongTermMemory:
             metadata={"hnsw:space": "cosine", "description": "Long-term conversation memories"}
         )
 
+        memory_count = self.collection.count()
         print(f"✅ Long-term memory initialized at {persist_directory}")
-        print(f"📊 Collection '{collection_name}' has {self.collection.count()} memories")
+        print(f"📊 Collection '{collection_name}' has {memory_count} memories")
+        print(f"[LongTermMemory] 초기화 완료 - 저장 경로: {persist_directory}, 기존 메모리: {memory_count}개")
 
     def save_memory(
         self,
@@ -114,6 +116,12 @@ class LongTermMemory:
         )
 
         print(f"💾 Saved memory: {memory_id[:20]}... (importance: {importance:.2f})")
+        print(f"[LongTermMemory] 메모리 저장 완료:")
+        print(f"  - ID: {memory_id}")
+        print(f"  - 중요도: {importance:.2f}")
+        print(f"  - 사용자 질문: {user_query[:50]}...")
+        print(f"  - 응답 길이: {len(assistant_response)}자")
+        print(f"  - 컨텍스트: tool_used={context.get('tool_used', False)}, rag_used={context.get('rag_used', False)}")
         return memory_id
 
     def search_memories(
@@ -133,12 +141,17 @@ class LongTermMemory:
         Returns:
             검색된 메모리 리스트
         """
+        print(f"[LongTermMemory] 메모리 검색 시작:")
+        print(f"  - 쿼리: {query[:50]}...")
+        print(f"  - top_k: {top_k}, min_importance: {min_importance}")
+        
         # 쿼리 임베딩 생성
         response = self.openai_client.embeddings.create(
             model=self.embed_model,
             input=[query]
         )
         query_embedding = response.data[0].embedding
+        print(f"[LongTermMemory] 임베딩 생성 완료 (차원: {len(query_embedding)})")
 
         # ChromaDB 검색
         # 중요도 필터링은 검색 후에 적용 (ChromaDB where 절 제한)
@@ -174,6 +187,11 @@ class LongTermMemory:
                 if len(formatted_results) >= top_k:
                     break
 
+        print(f"[LongTermMemory] 검색 완료: {len(formatted_results)}개 메모리 발견")
+        if formatted_results:
+            for i, mem in enumerate(formatted_results, 1):
+                print(f"  [{i}] 중요도: {mem['importance']:.2f}, 거리: {mem['distance']:.4f}, 질문: {mem['user_query'][:40]}...")
+        
         return formatted_results
 
     def get_recent_memories(self, limit: int = 10) -> List[Dict[str, Any]]:

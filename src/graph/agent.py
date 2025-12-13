@@ -34,9 +34,12 @@ class MovieChatAgent:
             enable_memory: 대화 메모리 활성화 여부 (checkpointer 사용)
         """
         # Short Term Memory 초기화
+        print(f"[MovieChatAgent] 메모리 시스템 초기화 중...")
         self.short_term_memory = ShortTermMemory(enable=enable_memory)
         self.checkpointer = self.short_term_memory.get_checkpointer()
+        print(f"[MovieChatAgent] Short Term Memory: {'활성화' if enable_memory else '비활성화'}")
         self.graph = self._build_graph()
+        print(f"[MovieChatAgent] 그래프 빌드 완료")
 
     def _build_graph(self):
         """

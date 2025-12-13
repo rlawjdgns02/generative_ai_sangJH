@@ -27,6 +27,7 @@ class ShortTermMemory:
         """
         self.enable = enable
         self.checkpointer: BaseCheckpointSaver = MemorySaver() if enable else None
+        print(f"[ShortTermMemory] 초기화 완료 - 활성화: {enable}")
 
     def get_checkpointer(self) -> BaseCheckpointSaver:
         """Checkpointer 인스턴스 반환"""
@@ -43,13 +44,15 @@ class ShortTermMemory:
             상태 요약 딕셔너리
         """
         messages = state.get("messages", [])
-        return {
+        summary = {
             "message_count": len(messages),
             "has_tool_result": state.get("tool_result") is not None,
             "has_final_answer": state.get("final_answer") is not None,
             "retrieved_contexts_count": len(state.get("retrieved_contexts", [])),
             "user_query": state.get("user_query", "")
         }
+        print(f"[ShortTermMemory] 상태 요약: {summary}")
+        return summary
 
     def extract_conversation_turn(self, state: AgentState) -> Dict[str, Any]:
         """
@@ -75,12 +78,14 @@ class ShortTermMemory:
         if not final_answer and assistant_message:
             final_answer = assistant_message
         
-        return {
+        turn_info = {
             "user_query": user_query,
             "assistant_response": final_answer,
             "message_count": len(messages),
             "has_tool_usage": state.get("tool_result") is not None,
             "has_rag_context": len(state.get("retrieved_contexts", [])) > 0
         }
+        print(f"[ShortTermMemory] 대화 턴 추출: 사용자 질문={user_query[:50]}..., 응답 길이={len(final_answer) if final_answer else 0}")
+        return turn_info
 
 
