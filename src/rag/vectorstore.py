@@ -56,38 +56,40 @@ class MovieVectorStore:
         print(f"✅ ChromaDB initialized at {persist_directory}")
         print(f"📊 Collection '{collection_name}' has {self.collection.count()} documents")
 
-    def add_documents(self, chunks: List[Any]) -> None:
-        """
-        OpenAI embedding을 사용하여 문서 추가 (과제 방식)
-
-        Args:
-            chunks: loader.py의 Chunk 리스트
-        """
+    def add_documents(self, chunks: List[Any], batch_size: int = 128) -> None:
         if not chunks:
             print("⚠️  No chunks to add")
             return
 
-        # 텍스트 추출
-        texts = [chunk.text for chunk in chunks]
+        print(f"🔄 Generating embeddings for {len(chunks)} chunks in batches of {batch_size}...")
 
-        # OpenAI로 embedding 생성 (과제 코드 방식)
-        print(f"🔄 Generating embeddings for {len(texts)} chunks...")
-        response = self.openai_client.embeddings.create(model=self.embed_model, input=texts)
-        embeddings = [item.embedding for item in response.data]
-
-        # ChromaDB에 추가
         ids = [chunk.id for chunk in chunks]
+        texts = [chunk.text for chunk in chunks]
         metadatas = [chunk.metadata for chunk in chunks]
 
-        self.collection.add(
-            ids=ids,
-            documents=texts,
-            embeddings=embeddings,
-            metadatas=metadatas
-        )
+        total = len(texts)
+        for start in range(0, total, batch_size):
+            end = min(start + batch_size, total)
+            batch_texts = texts[start:end]
+            batch_ids = ids[start:end]
+            batch_metas = metadatas[start:end]
 
-        print(f"✅ Added {len(chunks)} chunks with OpenAI embeddings")
+            resp = self.openai_client.embeddings.create(
+                model=self.embed_model,
+                input=batch_texts,
+            )
+            batch_embeddings = [item.embedding for item in resp.data]
+
+            self.collection.add(
+                ids=batch_ids,
+                documents=batch_texts,
+                embeddings=batch_embeddings,
+                metadatas=batch_metas,
+            )
+            print(f"✅ Added batch {start}-{end-1} (size {end-start})")
+
         print(f"📊 Total documents: {self.collection.count()}")
+
 
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """

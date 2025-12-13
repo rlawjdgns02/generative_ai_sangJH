@@ -111,10 +111,24 @@ class MovieChatAgent:
         ]
 
         # 대화 히스토리 추가
-        for user_msg, bot_msg in history:
-            if user_msg and bot_msg:
+        for item in history or []:
+            if isinstance(item, (list, tuple)) and len(item) >= 2:
+                user_msg, bot_msg = item[:2]
+            elif isinstance(item, dict):
+                if item.get("role") == "user":
+                    user_msg, bot_msg = item.get("content"), None
+                elif item.get("role") == "assistant":
+                    user_msg, bot_msg = None, item.get("content")
+                else:
+                    continue
+            else:
+                continue
+
+            if user_msg:
                 conversation.append({"role": "user", "content": str(user_msg)})
+            if bot_msg:
                 conversation.append({"role": "assistant", "content": str(bot_msg)})
+
 
         # 현재 질문 추가
         conversation.append({"role": "user", "content": str(user_message)})

@@ -45,7 +45,7 @@ class MovieRetriever:
             print(f"⚠️  No documents found in {document_directory}")
             return
 
-        # 벡터 저장소에 추가 (과제 방식 - 항상 OpenAI embedding)
+        # 벡터 저장소에 추가
         self.vectorstore.add_documents(chunks)
 
         print(f"✅ Initialization complete! Total documents: {self.vectorstore.count()}")

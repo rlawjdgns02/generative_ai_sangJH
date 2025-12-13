@@ -146,7 +146,7 @@ if __name__ == "__main__":
 
     # 데이터베이스 초기화 (처음 한 번만)
     print("\n1. Initializing database...")
-    init_result = initialize_rag_database("data/pdfs", ".pdf")
+    init_result = initialize_rag_database("data", ".pdf")
     print(f"Result: {init_result}")
 
     # 검색 테스트
