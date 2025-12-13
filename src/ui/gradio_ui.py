@@ -9,7 +9,7 @@ from typing import Any, Dict, Tuple
 
 import gradio as gr
 
-from ..tools.movie_tools import search_movies, recommend_movies
+from ..tools.movie_tools import recommend_movies
 from ..tools.search_tools import search_rag, initialize_rag_database
 
 
@@ -53,15 +53,15 @@ def create_ui(agent):
     # =========================
     # 2) Tool helper handlers
     # =========================
-    def handle_movie_search(query, year, genre) -> Dict[str, Any]:
-        if not query:
-            return {"ok": False, "error": "검색어를 입력해주세요."}
+    # def handle_movie_search(query, year, genre) -> Dict[str, Any]:
+    #     if not query:
+    #         return {"ok": False, "error": "검색어를 입력해주세요."}
 
-        ok, parsed_year, err = _parse_year(year)
-        if not ok:
-            return {"ok": False, "error": err}
+    #     ok, parsed_year, err = _parse_year(year)
+    #     if not ok:
+    #         return {"ok": False, "error": err}
 
-        return search_movies(query=query.strip(), year=parsed_year, genre=(genre or None))
+    #     return search_movies(query=query.strip(), year=parsed_year, genre=(genre or None))
 
     def handle_movie_recommend(preferences, count) -> Dict[str, Any]:
         if not preferences:
@@ -122,7 +122,7 @@ def create_ui(agent):
                     movie_search_btn = gr.Button("검색 실행")
                     movie_result = gr.JSON(label="검색 결과")
                     movie_search_btn.click(
-                        handle_movie_search,
+                        # handle_movie_search,
                         inputs=[movie_query, movie_year, movie_genre],
                         outputs=movie_result,
                     )

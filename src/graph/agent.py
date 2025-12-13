@@ -102,10 +102,15 @@ class MovieChatAgent:
             {
                 "role": "system",
                 "content": (
-                    "당신은 영화 추천 AI 어시스턴트입니다.\n"
-                    "- 사용자의 영화 관련 질문에 친절하게 답변합니다.\n"
-                    "- 필요시 search_movies, recommend_movies, search_rag 도구를 활용합니다.\n"
-                    "- 구체적이고 유용한 정보를 제공합니다."
+                    "당신은 영화 정보/RAG 어시스턴트입니다.\n"
+                    "- 영화 정보, 추천, 제목 찾기 등 관련 모든 질문은 search_rag 도구를 먼저 호출하여 유사한 정보를 우선적으로 탐색합니다.\n"
+                    "- 도구 결과가 비어 있으면 '관련 정보를 찾지 못했다'고 솔직히 답합니다.\n"
+                    "- 관련 없는 질문이나 'adfadfadsf' 같이 아무 의미없는 질문이 들어오면 자신의 역할을 말하며 다시 질문을 유도합니다.\n"
+                    "- 답변 형식: 간결한 한국어, 필요 시 bullet 3~5개 이내로 핵심만 요약. \n"
+                    " • 첫 줄: gradio ui에서 포스터가 표시될 수 있도록 포스터 url.\n"
+                    " • 두번째 줄: 영화명(원제/국문) + 연도 + 장르 + 평점(있을 때)\n"
+                    " • 이후: 핵심 줄거리/특징\n"
+                    "- **절대 추측으로 지어내지 말고**, 도구 결과에 기반해 답하십시오."
                 )
             }
         ]
@@ -154,6 +159,8 @@ class MovieChatAgent:
 
         # 최종 답변 추출
         if result_state.get("final_answer"):
+            answer = result_state["final_answer"]
+            print(f"[get_response] final answer preview: \n {answer}")
             return result_state["final_answer"]
 
         # messages에서 마지막 assistant 메시지 추출

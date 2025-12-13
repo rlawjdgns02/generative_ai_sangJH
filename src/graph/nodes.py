@@ -41,27 +41,6 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
         {
             "type": "function",
             "function": {
-                "name": "search_movies",
-                "description": "영화 데이터베이스에서 영화를 검색합니다.",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "검색 쿼리 (제목, 장르, 키워드 등)"
-                        },
-                        "year": {
-                            "type": "integer",
-                            "description": "개봉 연도 필터 (선택)"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            }
-        },
-        {
-            "type": "function",
-            "function": {
                 "name": "recommend_movies",
                 "description": "사용자 선호도 기반 영화를 추천합니다.",
                 "parameters": {
@@ -144,26 +123,23 @@ def tool_node(state: AgentState) -> Dict[str, Any]:
     """
     tool_result_json = state["tool_result"]
     if not tool_result_json:
+        print("[tool_node] no tool_result, skipping")
         return {"messages": [], "tool_result": None}
 
     tool_call = json.loads(tool_result_json)
     name = tool_call["function"]["name"]
     args = json.loads(tool_call["function"]["arguments"])
+    print(f"[tool_node] executing tool: {name} args={args}")
 
-    # Tool 실행 (나중에 실제 구현으로 교체)
     result = execute_tool(name, args)
+    print(f"[tool_node] result: {result}")
 
-    # Observation 메시지 생성
     observation = {
         "role": "tool",
         "content": json.dumps(result, ensure_ascii=False),
         "tool_call_id": tool_call["id"]
     }
-
-    return {
-        "messages": [observation],
-        "tool_result": None
-    }
+    return {"messages": [observation], "tool_result": None}
 
 
 def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:

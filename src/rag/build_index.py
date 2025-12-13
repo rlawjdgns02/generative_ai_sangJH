@@ -9,8 +9,10 @@ import os
 import sys
 from dotenv import load_dotenv
 
-# 프로젝트 루트 경로 추가
-sys.path.insert(0, os.path.dirname(__file__))
+import pathlib, sys
+ROOT = pathlib.Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from src.tools.search_tools import initialize_rag_database
 
