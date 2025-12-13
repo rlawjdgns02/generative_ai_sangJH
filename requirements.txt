@@ -1,0 +1,27 @@
+# Core Dependencies
+python-dotenv
+pydantic
+
+# OpenAI & LangChain
+openai
+langgraph
+langchain
+langchain-community
+langchain-text-splitters
+langchain-openai
+
+# Vector Store (과제 방식: ChromaDB 사용)
+chromadb
+
+# PDF Processing (pypdf만 사용)
+pypdf
+
+# Web Framework
+fastapi
+uvicorn[standard]
+gradio
+python-multipart
+aiofiles
+
+# Utilities
+numpy
