@@ -60,7 +60,14 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
                 # 시스템 메시지가 없으면 추가
                 messages.insert(0, {
                     "role": "system",
-                    "content": "당신은 영화 추천 AI 어시스턴트입니다.\n- 사용자의 영화 관련 질문에 친절하게 답변합니다.\n- 필요시 search_movies, recommend_movies, search_rag 도구를 활용합니다.\n- 구체적이고 유용한 정보를 제공합니다." + memory_context
+                    "content": (
+                        "당신은 영화 추천 AI 어시스턴트입니다.\n\n"
+                        "지원하는 기능:\n"
+                        "1. 영화 제목으로 정보 검색 (search_rag)\n"
+                        "2. 특정 영화와 비슷한 영화 추천\n"
+                        "3. 장르별 영화 추천 (recommend_by_genre)\n\n"
+                        "중요: 사용자가 줄거리만 말하면 '영화 제목을 알려주시면 더 정확히 도와드릴 수 있습니다'라고 안내하세요."
+                    ) + memory_context
                 })
                 print(f"[llm_node] 새로운 시스템 메시지 생성 (메모리 포함)")
         else:
@@ -73,22 +80,20 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
         {
             "type": "function",
             "function": {
-                "name": "recommend_movies",
-                "description": "사용자 선호도 기반 영화를 추천합니다.",
+                "name": "recommend_by_genre",
+                "description": "질문에서 장르를 추출해 해당 장르 영화 중 평점/인기순으로 상위 N편을 추천합니다.",
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        "preferences": {
+                        "query": {"type": "string", "description": "사용자 요청/장르 힌트"},
+                        "top_k": {"type": "integer", "description": "추천 개수", "default": 3},
+                        "exclude_titles": {
                             "type": "string",
-                            "description": "사용자 선호도 (장르, 분위기 등)"
-                        },
-                        "count": {
-                            "type": "integer",
-                            "description": "추천할 영화 개수",
-                            "default": 5
+                            "description": "제외할 영화 제목들 (쉼표로 구분). 예: '2001: A Space Odyssey, Finch'",
+                            "default": ""
                         }
                     },
-                    "required": ["preferences"]
+                    "required": ["query"]
                 }
             }
         },
@@ -96,25 +101,22 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
             "type": "function",
             "function": {
                 "name": "search_rag",
-                "description": "영화 관련 문서에서 정보를 검색합니다 (RAG).",
+                "description": "영화 제목으로 영화 정보를 검색합니다. 제목이 명확할 때만 사용하세요.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "검색할 질문"
+                            "description": "영화 제목. 예: '인터스텔라', '기생충', '어벤져스'"
                         },
-                        "top_k": {
-                            "type": "integer",
-                            "description": "반환할 컨텍스트 개수",
-                            "default": 3
-                        }
+                        "top_k": {"type": "integer", "description": "검색 결과 개수", "default": 3}
                     },
                     "required": ["query"]
                 }
             }
-        }
+        },
     ]
+
 
     # OpenAI API 호출
     response = client.chat.completions.create(
@@ -217,12 +219,10 @@ def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     - multiple-tools-with-template/tool_registry.py의 call 메서드
     """
     # tools/ 폴더에서 실제 함수 임포트
-    from ..tools.movie_tools import MOVIE_TOOLS
     from ..tools.search_tools import SEARCH_TOOLS
 
     # Tool 레지스트리 (모든 tool 통합)
     TOOL_REGISTRY = {
-        **MOVIE_TOOLS,
         **SEARCH_TOOLS,
     }
 

@@ -2,8 +2,6 @@
 retriever.py
 
 RAG 검색 로직
-강의 코드 참조:
-- utils.py의 build_prompt (lines 72-98)
 """
 
 import os
@@ -21,7 +19,7 @@ class MovieRetriever:
 
     def __init__(self, persist_directory: str = "data/vector_db"):
         """
-        Retriever 초기화 (과제 방식 - 항상 OpenAI embedding 사용)
+        Retriever 초기화
 
         Args:
             persist_directory: ChromaDB 저장 경로
@@ -52,7 +50,7 @@ class MovieRetriever:
 
     def retrieve(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """
-        질문에 맞는 문서 조각 검색 (과제 방식 - OpenAI embedding)
+        유사도 기반 검색
 
         Args:
             query: 검색 질문
@@ -88,23 +86,25 @@ class MovieRetriever:
         context_lines = []
 
         for idx, result in enumerate(results, start=1):
-            # 메타데이터 추출
-            source = result['metadata'].get('source', 'unknown')
-            chunk_id = result['metadata'].get('chunk_id', '?')
+            meta = result['metadata'] or {}
+            source = meta.get('source', 'unknown')
+            chunk_id = meta.get('chunk_id', '?')
             text = result['text']
 
-            # 컨텍스트 저장
             contexts.append({
                 "source": source,
                 "chunk_id": chunk_id,
                 "text": text,
-                "distance": result.get('distance', 0.0)
+                "distance": result.get('distance', 0.0),
+                "metadata": meta,  # ← 메타데이터 보존
             })
 
-            # LLM용 텍스트 생성
             source_name = os.path.basename(source) if source != 'unknown' else 'unknown'
+            title = meta.get("title", "")
+            genres = ", ".join(meta.get("genre_names", []) or meta.get("genres", []) or [])
+            year = meta.get("year", "")
             context_lines.append(
-                f"[{idx}] SOURCE={source_name} | CHUNK={chunk_id}\n{text}"
+                f"[{idx}] TITLE={title} YEAR={year} GENRES={genres} SOURCE={source_name} | CHUNK={chunk_id}\n{text}"
             )
 
         context_text = "\n\n".join(context_lines)

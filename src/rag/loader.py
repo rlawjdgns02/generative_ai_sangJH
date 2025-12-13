@@ -206,15 +206,3 @@ def load_documents_from_directory(directory: str, file_extension: str = ".txt") 
             print(f"Error loading {filename}: {e}")
 
     return all_chunks
-
-
-# 테스트용
-if __name__ == "__main__":
-    chunks = load_documents_from_directory("data", ".pdf")
-    print(f"\nTotal chunks loaded: {len(chunks)}")
-
-    if chunks:
-        print(f"\nFirst chunk example:")
-        print(f"ID: {chunks[0].id}")
-        print(f"Text preview: {chunks[0].text[:200]}...")
-        print(f"Metadata: {chunks[0].metadata}")
