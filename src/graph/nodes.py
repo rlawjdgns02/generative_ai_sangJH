@@ -15,6 +15,7 @@ from openai import OpenAI
 from dotenv import load_dotenv
 
 from ..schemas import AgentState
+from ..memory.reflection import get_relevant_memories, format_memories_for_context
 
 load_dotenv()
 
@@ -28,13 +29,36 @@ MODEL = os.getenv("CHAT_MODEL", "gpt-4o-mini")
 # ==========================================
 def llm_node(state: AgentState) -> Dict[str, Any]:
     """
-    LLM 호출 노드 - Tool calling 지원
+    LLM 호출 노드 - Tool calling 지원 + 메모리 통합
 
     참고:
     - example.py의 llm_node 패턴
     - react_tool_agent (1).py의 ReActToolAgent._chat
     """
-    messages = state["messages"]
+    messages = state["messages"].copy()
+    
+    # 관련 장기 메모리 검색 및 컨텍스트에 추가
+    user_query = state.get("user_query", "")
+    relevant_memories = []
+    if user_query:
+        relevant_memories = get_relevant_memories(user_query, top_k=3)
+        if relevant_memories:
+            memory_context = format_memories_for_context(relevant_memories)
+            # 시스템 메시지에 메모리 컨텍스트 추가
+            system_message_found = False
+            for i, msg in enumerate(messages):
+                if isinstance(msg, dict) and msg.get("role") == "system":
+                    messages[i] = msg.copy()
+                    messages[i]["content"] = msg.get("content", "") + memory_context
+                    system_message_found = True
+                    break
+            
+            if not system_message_found:
+                # 시스템 메시지가 없으면 추가
+                messages.insert(0, {
+                    "role": "system",
+                    "content": "당신은 영화 추천 AI 어시스턴트입니다.\n- 사용자의 영화 관련 질문에 친절하게 답변합니다.\n- 필요시 search_movies, recommend_movies, search_rag 도구를 활용합니다.\n- 구체적이고 유용한 정보를 제공합니다." + memory_context
+                })
 
     # Tool 정의 (나중에 tools/ 폴더에서 가져올 예정)
     tools = [
@@ -99,14 +123,34 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
         tool_call = msg.tool_calls[0]
         return {
             "messages": [msg.model_dump()],
-            "tool_result": json.dumps(tool_call.model_dump())
+            "tool_result": json.dumps(tool_call.model_dump()),
+            "relevant_memories": relevant_memories  # 관련 메모리 저장
         }
 
     # 최종 답변인 경우
     return {
         "messages": [msg.model_dump()],
         "tool_result": None,
-        "final_answer": msg.content
+        "final_answer": msg.content,
+        "relevant_memories": relevant_memories  # 관련 메모리 저장
+    }
+
+
+# ==========================================
+# 4. Reflection Node (자동 메모리 저장)
+# ==========================================
+def reflection_node(state: AgentState) -> Dict[str, Any]:
+    """
+    Reflection 노드 - 대화 내용을 분석하고 장기 메모리에 자동 저장
+    
+    참고: 메모리 시스템의 reflection 모듈 사용
+    """
+    from ..memory.reflection import reflect_and_save
+    
+    saved_memory_id = reflect_and_save(state)
+    
+    return {
+        "saved_memory_id": saved_memory_id
     }
 
 
@@ -181,6 +225,10 @@ def route_after_llm(state: AgentState) -> str:
 
     참고: example.py의 route 함수
     """
+    # Tool call이 있으면 tool 노드로
     if state.get("tool_result") is not None:
         return "tool"
+    # 최종 답변이 있으면 reflection 노드로 이동 (메모리 저장)
+    if state.get("final_answer"):
+        return "reflection"
     return "END"

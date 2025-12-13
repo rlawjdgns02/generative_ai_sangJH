@@ -39,6 +39,10 @@ class AgentState(TypedDict):
     # 최종 답변
     final_answer: Optional[str]
 
+    # 메모리 관련 필드
+    relevant_memories: Annotated[List[Dict[str, Any]], operator.add]  # 관련 장기 메모리
+    saved_memory_id: Optional[str]  # 저장된 메모리 ID
+
 
 # ==========================================
 # 2. Tool 입력/출력 스키마 (Pydantic)
