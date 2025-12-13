@@ -119,7 +119,7 @@ class MovieChatAgent:
         # 현재 질문 추가
         conversation.append({"role": "user", "content": str(user_message)})
 
-        # 그래프 실행
+        # 그래프 실행 입력
         inputs = {
             "messages": conversation,
             "user_query": user_message,
@@ -128,7 +128,15 @@ class MovieChatAgent:
             "final_answer": None
         }
 
-        result_state = self.graph.invoke(inputs)
+        # checkpointer(MemorySaver)를 사용할 때는 thread_id 등 configurable 키가 필요함
+        # Gradio ChatInterface에서는 세션 단위 스레드로 간단히 고정 ID를 사용
+        config = {
+            "configurable": {
+                "thread_id": "gradio-chat-session"
+            }
+        }
+
+        result_state = self.graph.invoke(inputs, config=config)
 
         # 최종 답변 추출
         if result_state.get("final_answer"):

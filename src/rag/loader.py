@@ -210,8 +210,7 @@ def load_documents_from_directory(directory: str, file_extension: str = ".txt") 
 
 # 테스트용
 if __name__ == "__main__":
-    # 예시: data/pdfs/ 디렉토리에서 PDF 로드
-    chunks = load_documents_from_directory("data/pdfs", ".pdf")
+    chunks = load_documents_from_directory("data", ".pdf")
     print(f"\nTotal chunks loaded: {len(chunks)}")
 
     if chunks:

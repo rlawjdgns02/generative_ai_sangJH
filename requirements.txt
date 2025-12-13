@@ -10,13 +10,11 @@ langchain-community
 langchain-text-splitters
 langchain-openai
 
-# Vector Store
-faiss-cpu
-# chromadb  # alternative option
+# Vector Store (과제 방식: ChromaDB 사용)
+chromadb
 
-# PDF Processing
+# PDF Processing (pypdf만 사용)
 pypdf
-PyPDF2
 
 # Web Framework
 fastapi

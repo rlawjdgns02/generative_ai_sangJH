@@ -93,7 +93,6 @@ def main():
     print("3. Movie Recommendation Test (Mock Data)")
     print("4. RAG Search Test (Real PDFs)")
     print("5. Run All Tests")
-    print("6. Interactive Chat Mode")
     print("0. Exit")
 
     while True:
