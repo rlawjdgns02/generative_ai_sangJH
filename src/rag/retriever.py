@@ -65,8 +65,6 @@ class MovieRetriever:
         """
         검색 결과를 LLM이 사용하기 쉬운 형식으로 반환
 
-        참고: utils.py의 build_prompt (lines 72-98)
-
         Args:
             query: 검색 질문
             top_k: 반환할 결과 개수

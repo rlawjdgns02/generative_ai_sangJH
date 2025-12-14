@@ -1,10 +1,9 @@
 """
 search_tools.py
 
-RAG 검색 Tool 함수 (과제 방식 적용)
-참고:
-- code/rag/query.py의 search_documents 패턴
-- code/utils.py의 build_prompt
+RAG 검색 Tool 함수
+구글 검색 Tool 함수
+
 """
 
 from typing import Dict, Any
@@ -12,12 +11,12 @@ from ..rag.retriever import MovieRetriever
 import re
 
 
-# 전역 Retriever 인스턴스 (과제 방식: 싱글톤 패턴)
+# 전역 Retriever 인스턴스
 _retriever = None
 
 def initialize_rag_database(document_directory: str = "data", file_extension: str = ".pdf", force: bool = False):
     """
-    RAG 데이터베이스 초기화 헬퍼 함수 (과제 방식 + 덮어쓰기 방지)
+    RAG 데이터베이스 초기화 헬퍼 함수 (덮어쓰기 방지)
 
     code/rag/build_index.py의 build_index 패턴 적용
     - data 폴더의 PDF 파일들을 ChromaDB에 색인
@@ -63,7 +62,6 @@ def get_retriever() -> MovieRetriever:
     """
     Retriever 싱글톤 패턴
 
-    code/rag/query.py와 동일하게 한 번만 초기화하여 재사용
     """
     global _retriever
     if _retriever is None:
@@ -94,6 +92,7 @@ GENRE_KEYWORDS = {
     "서부": ["서부", "western"],
 }
 
+# 영화 장르, 정보 파싱 함수
 def _parse_movie_fields(text: str) -> Dict[str, Any]:
     """텍스트 블록에서 title/year/genres/vote/popularity/poster_path 등을 추출."""
     meta: Dict[str, Any] = {}
@@ -143,6 +142,8 @@ def _parse_movie_fields(text: str) -> Dict[str, Any]:
 
     return meta
 
+
+# 장르에 맞는 영화 추천 함수
 def recommend_by_genre(query: str, top_k: int = 3, exclude_titles: str = "") -> Dict[str, Any]:
     q_lower = query.lower()
     target_genre = None
@@ -164,6 +165,7 @@ def recommend_by_genre(query: str, top_k: int = 3, exclude_titles: str = "") -> 
     result = retriever.retrieve_with_context(query, internal_k)
     contexts = result.get("contexts", [])
 
+    # 장르 정통성 반영 함수
     def genre_strength(genres, target):
         """목표 장르가 1순위이면 가중치 2, 포함만 되면 1, 없으면 0"""
         if not genres:
@@ -243,14 +245,10 @@ def recommend_by_genre(query: str, top_k: int = 3, exclude_titles: str = "") -> 
         "sources": [f"{c.get('metadata', {}).get('source')}:{c.get('metadata', {}).get('chunk_id')}" for c in filtered],
     }
 
+# RAG 데이터 검색 함수 (제목 요청 시 정보 반환용)
 def search_rag(query: str, top_k: int = 3) -> Dict[str, Any]:
     """
     RAG 검색 Tool 함수 (과제 방식)
-
-    code/rag/query.py의 search_documents 패턴 적용
-    - ChromaDB에서 관련 문서 검색
-    - OpenAI embedding으로 유사도 계산
-    - 컨텍스트 포맷팅하여 반환
 
     Args:
         query: 검색 질문
@@ -268,7 +266,7 @@ def search_rag(query: str, top_k: int = 3) -> Dict[str, Any]:
     try:
         retriever = get_retriever()
 
-        # 문서가 없으면 안내 (과제 방식)
+        # 청킹 -> 색인 -> 임베딩되어있는 문서가 없으면 안내
         if retriever.vectorstore.count() == 0:
             return {
                 "query": query,
@@ -283,7 +281,7 @@ def search_rag(query: str, top_k: int = 3) -> Dict[str, Any]:
                 "warning": "Database is empty"
             }
 
-        # 검색 실행 (code/rag/query.py의 search_documents 패턴)
+        # 검색 실행
         result = retriever.retrieve_with_context(query, top_k)
 
         # 출처 정보 추가 (과제 코드 방식: SOURCE:CHUNK 형태)

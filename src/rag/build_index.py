@@ -2,7 +2,6 @@
 build_index.py
 
 data/ 폴더의 PDF 파일들을 ChromaDB에 색인
-과제 코드 방식(code/rag/build_index.py) 적용
 """
 
 import os
