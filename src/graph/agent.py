@@ -45,9 +45,6 @@ class MovieChatAgent:
         """
         LangGraph 구성
 
-        참고:
-        - example.py의 그래프 구성 (lines 99-114)
-        - final_ai_project/app/agent.py의 workflow 구성 (lines 30-35)
         """
         # StateGraph 생성
         builder = StateGraph(AgentState)
@@ -84,9 +81,6 @@ class MovieChatAgent:
         """
         그래프 실행
 
-        참고:
-        - final_ai_project/app/agent.py의 invoke (line 91)
-        - human_in_the_loop/app/agent.py의 invoke (line 70)
         """
         return self.graph.invoke(input_data, config=config)
 
@@ -94,7 +88,6 @@ class MovieChatAgent:
         """
         스트리밍 실행
 
-        참고: examples/2_stream.py
         """
         return self.graph.stream(input_data, config=config)
 
@@ -102,7 +95,6 @@ class MovieChatAgent:
         """
         Gradio UI를 위한 인터페이스
 
-        참고: final_ai_project/app/agent.py의 get_response (lines 74-96)
         """
         if history is None:
             history = []
@@ -189,29 +181,3 @@ class MovieChatAgent:
                 return msg.get("content", "죄송합니다. 답변을 생성할 수 없습니다.")
 
         return "죄송합니다. 답변을 생성할 수 없습니다."
-
-
-# ==========================================
-# 직접 실행 테스트
-# ==========================================
-if __name__ == "__main__":
-    print("=== MovieChatAgent 테스트 ===\n")
-
-    agent = MovieChatAgent(enable_memory=False)
-
-    # 테스트 1: 간단한 질문
-    print("Q1: 안녕하세요!")
-    response1 = agent.get_response("안녕하세요!", [])
-    print(f"A1: {response1}\n")
-
-    # 테스트 2: 영화 검색
-    print("Q2: 인터스텔라에 대해 알려줘")
-    response2 = agent.get_response("인터스텔라에 대해 알려줘", [])
-    print(f"A2: {response2}\n")
-
-    # 테스트 3: 영화 추천
-    print("Q3: SF 영화 추천해줘")
-    response3 = agent.get_response("SF 영화 추천해줘", [])
-    print(f"A3: {response3}\n")
-
-    print("=== 테스트 완료 ===")

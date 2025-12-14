@@ -2,9 +2,7 @@
 vectorstore.py
 
 ChromaDB 기반 벡터 저장소 (과제 방식)
-참고:
-- 과제 코드의 build_index 함수
-- utils.py의 embed_texts (lines 63-65)
+
 """
 
 import os
@@ -168,37 +166,3 @@ class MovieVectorStore:
     def count(self) -> int:
         """저장된 문서 개수"""
         return self.collection.count()
-
-
-# 테스트용
-if __name__ == "__main__":
-    # 벡터 저장소 생성
-    store = MovieVectorStore()
-
-    # 테스트 문서 추가
-    from ..rag.loader import Chunk
-
-    test_chunks = [
-        Chunk(
-            id="test_1",
-            text="Interstellar is a 2014 science fiction film directed by Christopher Nolan.",
-            metadata={"source": "test.txt", "chunk_id": 0}
-        ),
-        Chunk(
-            id="test_2",
-            text="The movie explores themes of space travel, time dilation, and human survival.",
-            metadata={"source": "test.txt", "chunk_id": 1}
-        )
-    ]
-
-    # 문서 추가
-    store.add_documents(test_chunks)
-
-    # 검색 테스트
-    results = store.search("Tell me about Interstellar", top_k=2)
-
-    print("\n🔍 Search results:")
-    for i, result in enumerate(results, 1):
-        print(f"\n[{i}] Distance: {result['distance']:.4f}")
-        print(f"Text: {result['text'][:100]}...")
-        print(f"Metadata: {result['metadata']}")

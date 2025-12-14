@@ -2,9 +2,6 @@
 loader.py
 
 문서 로딩 및 청킹
-강의 코드 참조:
-- utils.py의 chunk_document (lines 37-56)
-- utils.py의 build_text_splitter (lines 23-29)
 """
 
 import os
@@ -29,7 +26,6 @@ def build_text_splitter(chunk_size: int = 700, chunk_overlap: int = 120) -> Recu
     """
     텍스트 분할기 생성
 
-    참고: utils.py의 build_text_splitter (lines 23-29)
     """
     return RecursiveCharacterTextSplitter(
         separators=["\n\n", ". ", "! ", "? ", "\n", " "],
@@ -46,8 +42,6 @@ def chunk_document(doc_text: str, source: str, splitter=None) -> List[Chunk]:
     영화 PDF의 경우 "N번째 영화"로 구분하여 영화 단위로 chunking
     일반 문서는 기존 방식대로 처리
 
-    참고: utils.py의 chunk_document (lines 37-56)
-
     Args:
         doc_text: 문서 텍스트
         source: 문서 출처 (파일 경로)
@@ -58,7 +52,7 @@ def chunk_document(doc_text: str, source: str, splitter=None) -> List[Chunk]:
     """
     chunks = []
 
-    # 영화 PDF인 경우: "N번째 영화"로 분할 (영화 단위 chunking)
+    # 영화 PDF: "N번째 영화"로 분할 (영화 단위 chunking)
     if "번째 영화" in doc_text:
         # "N번째 영화"로 split
         import re
@@ -107,7 +101,7 @@ def chunk_document(doc_text: str, source: str, splitter=None) -> List[Chunk]:
             )
 
     else:
-        # 일반 문서: 기존 방식 (RecursiveCharacterTextSplitter 사용)
+        # 일반 문서: RecursiveCharacterTextSplitter 사용
         if splitter is None:
             splitter = build_text_splitter()
 

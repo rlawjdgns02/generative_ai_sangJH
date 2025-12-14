@@ -1,11 +1,8 @@
 """
 nodes.py
 
-LangGraph의 각 노드 함수들
-강의 코드 참조:
-- example.py: llm_node, tool_node 패턴
-- react_tool_agent (1).py: ReAct 패턴의 tool dispatch
-- final_ai_project/app/agent.py: call_model 노드
+LangGraph의 각 노드 함수
+
 """
 
 import os
@@ -31,9 +28,6 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
     """
     LLM 호출 노드 - Tool calling 지원 + 메모리 통합
 
-    참고:
-    - example.py의 llm_node 패턴
-    - react_tool_agent (1).py의 ReActToolAgent._chat
     """
     messages = state["messages"].copy()
     
@@ -101,7 +95,7 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
             "type": "function",
             "function": {
                 "name": "search_rag",
-                "description": "영화 제목으로 영화 정보를 검색합니다. 제목이 명확할 때만 사용하세요.",
+                "description": "영화 제목으로 영화 정보를 검색합니다.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -149,7 +143,7 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
 
 
 # ==========================================
-# 4. Reflection Node (자동 메모리 저장)
+# 2. Reflection Node (자동 메모리 저장)
 # ==========================================
 def reflection_node(state: AgentState) -> Dict[str, Any]:
     """
@@ -179,15 +173,12 @@ def reflection_node(state: AgentState) -> Dict[str, Any]:
 
 
 # ==========================================
-# 2. Tool Execution Node
+# 3-1. Tool Execution Node
 # ==========================================
 def tool_node(state: AgentState) -> Dict[str, Any]:
     """
     Tool 실행 노드
 
-    참고:
-    - example.py의 tool_node 패턴
-    - react_tool_agent (1).py의 dispatch_tool
     """
     tool_result_json = state["tool_result"]
     if not tool_result_json:
@@ -210,6 +201,9 @@ def tool_node(state: AgentState) -> Dict[str, Any]:
     return {"messages": [observation], "tool_result": None}
 
 
+# ==========================================
+# 3-2. Tool Execution Function
+# ==========================================
 def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     """
     Tool 디스패처 - 실제 tool 함수 호출
@@ -239,7 +233,7 @@ def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # ==========================================
-# 3. Routing Function
+# 4. Routing Function
 # ==========================================
 def route_after_llm(state: AgentState) -> str:
     """
