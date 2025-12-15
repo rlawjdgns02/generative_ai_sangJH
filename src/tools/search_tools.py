@@ -220,7 +220,16 @@ def recommend_by_genre(query: str, top_k: int = 3, exclude_titles: str = "") -> 
 
     # 장르 필터 후 모자라면 나머지로 채우기
     if len(filtered) < top_k:
-        remaining = [c for c in contexts if c not in filtered]
+        remaining = []
+        for c in contexts:
+            if c in filtered:
+                continue
+            md_rem = c.get("metadata", {}) or {}
+            title_rem = md_rem.get("title", "")
+            if title_rem and any(excl in title_rem.lower() for excl in exclude_set):
+                continue
+            remaining.append(c)
+
         remaining.sort(key=sort_key, reverse=True)
         filtered.extend(remaining[: top_k - len(filtered)])
 
