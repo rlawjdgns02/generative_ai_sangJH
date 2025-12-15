@@ -9,6 +9,8 @@ RAG 검색 Tool 함수
 from typing import Dict, Any
 from ..rag.retriever import MovieRetriever
 import re
+import os
+from googleapiclient.discovery import build
 
 
 # 전역 Retriever 인스턴스
@@ -260,7 +262,9 @@ def search_rag(query: str, top_k: int = 3) -> Dict[str, Any]:
             "contexts": 컨텍스트 리스트,
             "context_text": LLM용 텍스트,
             "sources": 출처 리스트,
-            "count": 결과 개수
+            "count": 결과 개수,
+            "multiple_candidates": 동명 영화가 여러 개인 경우 True,
+            "top_candidate": 가장 인기 있는 영화 (투표 수 기준)
         }
     """
     try:
@@ -281,14 +285,84 @@ def search_rag(query: str, top_k: int = 3) -> Dict[str, Any]:
                 "warning": "Database is empty"
             }
 
-        # 검색 실행
-        result = retriever.retrieve_with_context(query, top_k)
+        # 검색 실행 (더 많은 결과 가져와서 필터링)
+        internal_k = max(top_k * 3, 10)
+        result = retriever.retrieve_with_context(query, internal_k)
 
-        # 출처 정보 추가 (과제 코드 방식: SOURCE:CHUNK 형태)
-        sources = retriever.get_sources(query, top_k)
-        result["sources"] = sources
+        contexts = result.get("contexts", [])
 
-        return result
+        # 메타데이터 파싱 및 보강
+        for ctx in contexts:
+            md = ctx.get("metadata", {}) or {}
+            text_raw = ctx.get("text") or ""
+
+            # 텍스트에서 누락된 메타 채우기
+            parsed = _parse_movie_fields(text_raw)
+            for k, v in parsed.items():
+                md.setdefault(k, v)
+            ctx["metadata"] = md
+
+        # 동명 영화 체크: 제목이 같지만 연도가 다른 경우
+        title_groups = {}
+        for ctx in contexts:
+            title = ctx.get("metadata", {}).get("title", "").lower().strip()
+            if title:
+                if title not in title_groups:
+                    title_groups[title] = []
+                title_groups[title].append(ctx)
+
+        multiple_candidates = False
+        top_candidate = None
+
+        # 동명 영화가 2개 이상이면
+        for title, candidates in title_groups.items():
+            if len(candidates) >= 2:
+                multiple_candidates = True
+                # 투표 수(vote_count)로 정렬 (높은 순)
+                candidates.sort(
+                    key=lambda c: c.get("metadata", {}).get("vote_count", 0),
+                    reverse=True
+                )
+                # 가장 인기 있는 영화를 top_candidate로 설정
+                if not top_candidate or candidates[0].get("metadata", {}).get("vote_count", 0) > top_candidate.get("metadata", {}).get("vote_count", 0):
+                    top_candidate = candidates[0]
+
+        # 투표 수 기준으로 전체 정렬 (인기도 우선)
+        contexts.sort(
+            key=lambda c: (
+                c.get("metadata", {}).get("vote_count", 0),  # 투표 수 (높은 순)
+                -c.get("distance", 1.0)  # 거리 (낮은 순, 음수로 역정렬)
+            ),
+            reverse=True
+        )
+
+        # top_k 개수로 제한
+        contexts = contexts[:top_k]
+
+        # 출처 정보 추가
+        sources = [f"{c.get('metadata', {}).get('source')}:{c.get('metadata', {}).get('chunk_id')}" for c in contexts]
+
+        # context_text 재생성
+        context_text = ""
+        for i, ctx in enumerate(contexts, 1):
+            md = ctx.get("metadata", {}) or {}
+            context_text += f"[{i}] TITLE={md.get('title', '')} YEAR={md.get('year', '')} GENRES={md.get('genre_names', '')} SOURCE={md.get('source', '')} | CHUNK={md.get('chunk_id', '')}\n"
+            context_text += ctx.get("text", "") + "\n\n"
+
+        return {
+            "query": query,
+            "contexts": contexts,
+            "context_text": context_text,
+            "sources": sources,
+            "count": len(contexts),
+            "multiple_candidates": multiple_candidates,
+            "top_candidate": {
+                "title": top_candidate.get("metadata", {}).get("title"),
+                "year": top_candidate.get("metadata", {}).get("year"),
+                "vote_count": top_candidate.get("metadata", {}).get("vote_count"),
+                "overview": top_candidate.get("text", "")[:200] + "..."
+            } if top_candidate else None
+        }
 
     except Exception as e:
         return {
@@ -301,8 +375,99 @@ def search_rag(query: str, top_k: int = 3) -> Dict[str, Any]:
         }
 
 
+def search_ott_availability(movie_title: str) -> Dict[str, Any]:
+    """
+    Google Custom Search API를 사용하여 JustWatch 링크를 찾아 OTT 시청 정보를 제공
+
+    Args:
+        movie_title: 영화 제목
+
+    Returns:
+        {
+            "movie_title": 영화 제목,
+            "justwatch_link": JustWatch 링크,
+            "ott_info": OTT 안내 메시지,
+            "found": 링크 발견 여부
+        }
+    """
+    try:
+        # 환경 변수에서 API 키 가져오기
+        api_key = os.getenv("GOOGLE_SEARCH_API_KEY")
+        search_engine_id = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+
+        if not api_key or not search_engine_id:
+            return {
+                "movie_title": movie_title,
+                "justwatch_link": None,
+                "ott_info": "Google Search API 설정이 필요합니다.",
+                "found": False,
+                "error": "Missing API credentials"
+            }
+
+        # Google Custom Search API 클라이언트 생성
+        service = build("customsearch", "v1", developerKey=api_key)
+
+        # 검색 쿼리 구성: JustWatch 사이트 우선 검색
+        search_query = f"{movie_title} justwatch"
+
+        # 검색 실행
+        result = service.cse().list(
+            q=search_query,
+            cx=search_engine_id,
+            num=5,  # 상위 5개 결과
+            lr="lang_ko"  # 한국어 결과 우선
+        ).execute()
+
+        # 검색 결과에서 JustWatch 링크 찾기
+        items = result.get("items", [])
+        justwatch_link = None
+
+        for item in items:
+            link = item.get("link", "")
+            title = item.get("title", "")
+
+            # JustWatch.com 한국 사이트 링크 찾기
+            if "justwatch.com/kr" in link.lower() and "영화" in title:
+                # 영화 제목이 타이틀에 포함되어 있는지 확인 (정확도 향상)
+                if any(word in title for word in movie_title.split()):
+                    justwatch_link = link
+                    break
+
+        # 결과 포맷팅
+        if justwatch_link:
+            ott_info = (
+                f"'{movie_title}' 영화의 OTT 시청 가능 여부는 아래 링크에서 확인하실 수 있습니다.\n"
+                f"링크: {justwatch_link}\n\n"
+                f"JustWatch에서 넷플릭스, 왓챠, 디즈니+, 티빙, 웨이브 등 다양한 플랫폼의 시청 정보를 제공합니다."
+            )
+            return {
+                "movie_title": movie_title,
+                "justwatch_link": justwatch_link,
+                "ott_info": ott_info,
+                "found": True
+            }
+        else:
+            ott_info = f"'{movie_title}' 영화의 OTT 시청 정보를 찾을 수 없습니다. JustWatch에서 직접 검색해보시기 바랍니다."
+            return {
+                "movie_title": movie_title,
+                "justwatch_link": None,
+                "ott_info": ott_info,
+                "found": False
+            }
+
+    except Exception as e:
+        return {
+            "movie_title": movie_title,
+            "justwatch_link": None,
+            "ott_info": f"OTT 검색 중 오류 발생: {str(e)}",
+            "found": False,
+            "error": str(e)
+        }
+
+
 # Tool 레지스트리
 SEARCH_TOOLS = {
     "search_rag": search_rag,
     "recommend_by_genre": recommend_by_genre,
+    "search_ott_availability": search_ott_availability,
 }

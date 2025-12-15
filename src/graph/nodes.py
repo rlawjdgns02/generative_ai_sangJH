@@ -109,6 +109,67 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
                 }
             }
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_ott_availability",
+                "description": "Google 검색을 통해 영화의 OTT 시청 가능 여부를 확인합니다. 넷플릭스, 왓챠, 디즈니+, 티빙, 웨이브 등의 플랫폼 정보를 제공합니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "movie_title": {
+                            "type": "string",
+                            "description": "OTT 시청 가능 여부를 확인할 영화 제목. 예: '인터스텔라', '기생충'"
+                        }
+                    },
+                    "required": ["movie_title"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "calculate",
+                "description": "수식을 계산합니다. 기본 사칙연산(+, -, *, /), 나머지(%), 거듭제곱(**), 괄호를 지원합니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "expression": {
+                            "type": "string",
+                            "description": "계산할 수식. 예: '2 + 3 * 4', '(10 + 5) / 3', '2 ** 8', '100 % 7'"
+                        }
+                    },
+                    "required": ["expression"]
+                }
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "calculate_date_difference",
+                "description": "두 날짜 사이의 차이를 계산합니다. 일, 시간, 분, 초 단위로 반환할 수 있습니다. 영화 기념일 계산에 유용합니다 (예: 영화 개봉일부터 오늘까지 며칠 지났는지). date2를 None으로 설정하면 자동으로 오늘 날짜를 사용합니다. 필요시 get_current_time을 먼저 호출하여 현재 날짜를 확인할 수 있습니다.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "date1": {
+                            "type": "string",
+                            "description": "첫 번째 날짜 (영화 개봉일 등). 예: '2014-11-06' (인터스텔라), '1997-12-19' (타이타닉), '2024-01-15'"
+                        },
+                        "date2": {
+                            "type": "string",
+                            "description": "두 번째 날짜 (None이면 오늘 날짜 자동 사용). 예: '2024-02-20'. 영화 기념일 계산 시에는 None으로 설정하면 됩니다.",
+                            "default": None
+                        },
+                        "unit": {
+                            "type": "string",
+                            "description": "반환 단위: 'days' (일), 'hours' (시간), 'minutes' (분), 'seconds' (초) (기본: 'days')",
+                            "default": "days"
+                        }
+                    },
+                    "required": ["date1"]
+                }
+            }
+        },
     ]
 
 
@@ -178,7 +239,6 @@ def reflection_node(state: AgentState) -> Dict[str, Any]:
 def tool_node(state: AgentState) -> Dict[str, Any]:
     """
     Tool 실행 노드
-
     """
     tool_result_json = state["tool_result"]
     if not tool_result_json:
@@ -214,10 +274,12 @@ def execute_tool(name: str, args: Dict[str, Any]) -> Dict[str, Any]:
     """
     # tools/ 폴더에서 실제 함수 임포트
     from ..tools.search_tools import SEARCH_TOOLS
+    from ..tools.normal_tools import NORMAL_TOOLS
 
     # Tool 레지스트리 (모든 tool 통합)
     TOOL_REGISTRY = {
         **SEARCH_TOOLS,
+        **NORMAL_TOOLS,
     }
 
     # Tool 실행
