@@ -185,11 +185,17 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
 
     # Tool call이 있는 경우
     if msg.tool_calls:
-        tool_call = msg.tool_calls[0]
-        print(f"[llm_node] Tool call 감지: {tool_call.function.name}")
+        # 모든 tool_calls 처리
+        print(f"[llm_node] Tool call 감지: {len(msg.tool_calls)}개")
+        for tc in msg.tool_calls:
+            print(f"  - {tc.function.name}")
+
+        # 모든 tool_calls를 JSON 리스트로 저장
+        all_tool_calls = [tc.model_dump() for tc in msg.tool_calls]
+
         return {
             "messages": [msg.model_dump()],
-            "tool_result": json.dumps(tool_call.model_dump()),
+            "tool_result": json.dumps(all_tool_calls),  # 리스트로 저장
             "relevant_memories": relevant_memories  # 관련 메모리 저장
         }
 
@@ -238,27 +244,40 @@ def reflection_node(state: AgentState) -> Dict[str, Any]:
 # ==========================================
 def tool_node(state: AgentState) -> Dict[str, Any]:
     """
-    Tool 실행 노드
+    Tool 실행 노드 - 여러 tool calls 처리
     """
     tool_result_json = state["tool_result"]
     if not tool_result_json:
         print("[tool_node] no tool_result, skipping")
         return {"messages": [], "tool_result": None}
 
-    tool_call = json.loads(tool_result_json)
-    name = tool_call["function"]["name"]
-    args = json.loads(tool_call["function"]["arguments"])
-    print(f"[tool_node] executing tool: {name} args={args}")
+    tool_calls = json.loads(tool_result_json)
 
-    result = execute_tool(name, args)
-    print(f"[tool_node] result: {result}")
+    # 단일 tool call도 리스트로 처리 (하위 호환성)
+    if isinstance(tool_calls, dict):
+        tool_calls = [tool_calls]
 
-    observation = {
-        "role": "tool",
-        "content": json.dumps(result, ensure_ascii=False),
-        "tool_call_id": tool_call["id"]
-    }
-    return {"messages": [observation], "tool_result": None}
+    print(f"[tool_node] {len(tool_calls)}개 tool 실행 시작")
+
+    # 모든 tool calls 실행 및 응답 생성
+    observations = []
+    for tool_call in tool_calls:
+        name = tool_call["function"]["name"]
+        args = json.loads(tool_call["function"]["arguments"])
+        print(f"[tool_node] executing tool: {name} args={args}")
+
+        result = execute_tool(name, args)
+        print(f"[tool_node] result: {result}")
+
+        observation = {
+            "role": "tool",
+            "content": json.dumps(result, ensure_ascii=False),
+            "tool_call_id": tool_call["id"]
+        }
+        observations.append(observation)
+
+    print(f"[tool_node] {len(observations)}개 tool 응답 생성 완료")
+    return {"messages": observations, "tool_result": None}
 
 
 # ==========================================

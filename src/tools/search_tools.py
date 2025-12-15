@@ -302,20 +302,28 @@ def search_rag(query: str, top_k: int = 3) -> Dict[str, Any]:
                 md.setdefault(k, v)
             ctx["metadata"] = md
 
-        # 동명 영화 체크: 제목이 같지만 연도가 다른 경우
+        # 동명/유사 제목 영화 체크
+        # 유사도 판단: 제목의 처음 8글자가 비슷하면 같은 그룹으로 간주
+        def normalize_title(title):
+            """제목 정규화: 소문자, 특수문자 제거, 공백 제거"""
+            import re
+            normalized = re.sub(r'[^a-z0-9가-힣]', '', title.lower())
+            return normalized[:12]  # 처음 12글자로 비교
+
         title_groups = {}
         for ctx in contexts:
-            title = ctx.get("metadata", {}).get("title", "").lower().strip()
+            title = ctx.get("metadata", {}).get("title", "").strip()
             if title:
-                if title not in title_groups:
-                    title_groups[title] = []
-                title_groups[title].append(ctx)
+                normalized = normalize_title(title)
+                if normalized not in title_groups:
+                    title_groups[normalized] = []
+                title_groups[normalized].append(ctx)
 
         multiple_candidates = False
         top_candidate = None
 
-        # 동명 영화가 2개 이상이면
-        for title, candidates in title_groups.items():
+        # 동명/유사 영화가 2개 이상이면
+        for normalized_title, candidates in title_groups.items():
             if len(candidates) >= 2:
                 multiple_candidates = True
                 # 투표 수(vote_count)로 정렬 (높은 순)
