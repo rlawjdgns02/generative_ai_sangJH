@@ -28,7 +28,7 @@
 ### 1. LangGraph Agent 구조
 [cite_start]`LLM Node` ↔ `Tool Node` ↔ `Reflection Node`의 순환 구조를 가집니다. [cite: 37-41]
 
-![LangGraph Agent Architecture](assets/langgraph_architecture.png)
+![LangGraph Agent Architecture](assets/생에응플젝다이어그램.drawio.png)
 
 * **LLM Node:** 사용자 질문 분석 및 도구 호출 결정
 * **Tool Node:** RAG 검색, OTT 정보 확인, 계산기 등 기능 수행
