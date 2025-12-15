@@ -148,13 +148,24 @@ def calculate_date_difference(date1: str, date2: str = None, unit: str = "days")
                 "error": f"날짜 계산(calculate 호출) 중 오류: {calc_result.get('error')}"
             }
 
-        difference = abs(calc_result["result"])
+        difference = calc_result["result"]  # abs() 제거
+
+        # 과거/미래 판단
+        # (오늘 - date1)이므로: 양수 = date1이 과거, 음수 = date1이 미래
+        if difference > 0:
+            time_direction = "전"  # 과거 (date1이 오늘보다 이전)
+        elif difference < 0:
+            time_direction = "후"  # 미래 (date1이 오늘보다 이후)
+            difference = abs(difference)  # 표시용으로만 절댓값 사용
+        else:
+            time_direction = "오늘"
 
         return {
-            "date1": date1, 
-            "date2": date2 or "오늘", 
-            "difference": difference, 
-            "unit": unit, 
+            "date1": date1,
+            "date2": date2 or "오늘",
+            "difference": difference,
+            "unit": unit,
+            "time_direction": time_direction,  # 과거/미래 정보 추가
             "ok": True,
         }
 

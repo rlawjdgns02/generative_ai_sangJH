@@ -51,15 +51,12 @@ class MovieVectorStore:
             metadata={"hnsw:space": "cosine"}
         )
 
-        print(f"✅ ChromaDB initialized at {persist_directory}")
-        print(f"📊 Collection '{collection_name}' has {self.collection.count()} documents")
+        count = self.collection.count()
+        print(f"[INIT] ChromaDB 초기화: {count}개 문서")
 
     def add_documents(self, chunks: List[Any], batch_size: int = 128) -> None:
         if not chunks:
-            print("⚠️  No chunks to add")
             return
-
-        print(f"🔄 Generating embeddings for {len(chunks)} chunks in batches of {batch_size}...")
 
         ids = [chunk.id for chunk in chunks]
         texts = [chunk.text for chunk in chunks]
@@ -84,9 +81,9 @@ class MovieVectorStore:
                 embeddings=batch_embeddings,
                 metadatas=batch_metas,
             )
-            print(f"✅ Added batch {start}-{end-1} (size {end-start})")
 
-        print(f"📊 Total documents: {self.collection.count()}")
+        count = self.collection.count()
+        print(f"[INIT] ✅ 문서 추가 완료: {count}개")
 
 
     def search(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:

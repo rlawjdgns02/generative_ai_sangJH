@@ -51,7 +51,6 @@ class ShortTermMemory:
             "retrieved_contexts_count": len(state.get("retrieved_contexts", [])),
             "user_query": state.get("user_query", "")
         }
-        print(f"[ShortTermMemory] 상태 요약: {summary}")
         return summary
 
     def extract_conversation_turn(self, state: AgentState) -> Dict[str, Any]:
@@ -85,7 +84,6 @@ class ShortTermMemory:
             "has_tool_usage": state.get("tool_result") is not None,
             "has_rag_context": len(state.get("retrieved_contexts", [])) > 0
         }
-        print(f"[ShortTermMemory] 대화 턴 추출: 사용자 질문={user_query[:50]}..., 응답 길이={len(final_answer) if final_answer else 0}")
         return turn_info
 
 

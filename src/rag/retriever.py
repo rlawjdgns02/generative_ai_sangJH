@@ -34,19 +34,19 @@ class MovieRetriever:
             document_directory: 문서 디렉토리 경로
             file_extension: 파일 확장자 (.txt, .pdf 등)
         """
-        print(f"📂 Loading documents from {document_directory}...")
+        print(f"[INIT] 문서 로딩 시작: {document_directory}")
 
         # 문서 로드 및 청킹
         chunks = load_documents_from_directory(document_directory, file_extension)
 
         if not chunks:
-            print(f"⚠️  No documents found in {document_directory}")
-            return
+            raise ValueError(f"No documents found in {document_directory}")
 
         # 벡터 저장소에 추가
         self.vectorstore.add_documents(chunks)
 
-        print(f"✅ Initialization complete! Total documents: {self.vectorstore.count()}")
+        count = self.vectorstore.count()
+        print(f"[INIT] ✅ 초기화 완료: {count}개 문서")
 
     def retrieve(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """
