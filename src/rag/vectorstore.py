@@ -1,7 +1,7 @@
 """
 vectorstore.py
 
-ChromaDB 기반 벡터 저장소 (과제 방식)
+ChromaDB 기반 벡터 저장소
 
 """
 
@@ -17,7 +17,7 @@ load_dotenv()
 
 class MovieVectorStore:
     """
-    ChromaDB 기반 영화 정보 벡터 저장소 (과제 방식)
+    ChromaDB 기반 영화 정보 벡터 저장소
 
     과제 방식:
     - OpenAI로 직접 embedding 생성
@@ -63,24 +63,30 @@ class MovieVectorStore:
         metadatas = [chunk.metadata for chunk in chunks]
 
         total = len(texts)
-        for start in range(0, total, batch_size):
+        total_batches = (total + batch_size - 1) // batch_size
+        print(f"[INIT] 총 {total}개 문서를 {batch_size}개씩 {total_batches}개 배치로 처리 중...")
+
+        for batch_idx, start in enumerate(range(0, total, batch_size), 1):
             end = min(start + batch_size, total)
             batch_texts = texts[start:end]
             batch_ids = ids[start:end]
             batch_metas = metadatas[start:end]
 
+            print(f"[INIT] 배치 {batch_idx}/{total_batches} 임베딩 생성 중... ({start+1}-{end}/{total})")
             resp = self.openai_client.embeddings.create(
                 model=self.embed_model,
                 input=batch_texts,
             )
             batch_embeddings = [item.embedding for item in resp.data]
 
+            print(f"[INIT] 배치 {batch_idx}/{total_batches} DB 저장 중...")
             self.collection.add(
                 ids=batch_ids,
                 documents=batch_texts,
                 embeddings=batch_embeddings,
                 metadatas=batch_metas,
             )
+            print(f"[INIT] 배치 {batch_idx}/{total_batches} 완료 ✓")
 
         count = self.collection.count()
         print(f"[INIT] ✅ 문서 추가 완료: {count}개")

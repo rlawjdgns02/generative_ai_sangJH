@@ -2,10 +2,6 @@
 agent.py
 
 메인 LangGraph 에이전트 그래프 정의
-강의 코드 참조:
-- example.py: StateGraph 구성, conditional_edges
-- final_ai_project/app/agent.py: AIAgent 클래스 패턴
-- human_in_the_loop/app/agent.py: checkpointer, interrupt 지원
 """
 
 from langgraph.graph import StateGraph, END
@@ -19,11 +15,6 @@ from .nodes import llm_node, tool_node, route_after_llm, reflection_node
 class MovieChatAgent:
     """
     영화 추천 채팅 에이전트
-
-    강의 코드 패턴 통합:
-    - final_ai_project/app/agent.py의 AIAgent 클래스 구조
-    - example.py의 그래프 구성 방식
-    - human_in_the_loop/app/agent.py의 checkpointer 활용
     """
 
     def __init__(self, enable_memory: bool = True, enable_interrupt: bool = False):
@@ -104,7 +95,6 @@ class MovieChatAgent:
 
         - 내부적으로 stream을 사용하여 이벤트를 순회합니다.
         - 중간에 인터럽트가 발생하면 그 시점의 이벤트와 함께 반환합니다.
-        - 기존 get_response에서는 사용하지 않으므로 기존 동작에는 영향을 주지 않습니다.
         """
         last_event = None
         for event in self.graph.stream(input_data, config=config):
@@ -122,7 +112,6 @@ class MovieChatAgent:
 
         - checkpointer + 동일 thread_id를 활용해 이전 상태에서 이어서 실행합니다.
         - UI/서버 레이어에서 updated_input을 만들어 전달하는 패턴을 위한 메서드입니다.
-        - 현재 Gradio/FastAPI 경로에서는 사용하지 않으므로 기존 동작에는 영향을 주지 않습니다.
         """
         return self.graph.invoke(updated_input, config=config)
 

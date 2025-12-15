@@ -62,7 +62,7 @@ def llm_node(state: AgentState) -> Dict[str, Any]:
                     ) + memory_context
                 })
 
-    # Tool 정의 (나중에 tools/ 폴더에서 가져올 예정)
+    # Tool 정의
     tools = [
         {
             "type": "function",

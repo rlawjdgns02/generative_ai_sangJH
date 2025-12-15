@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# 일반 CLI Test 파일 (!! 테스트용 !!)
 import os
 import sys
 from dotenv import load_dotenv

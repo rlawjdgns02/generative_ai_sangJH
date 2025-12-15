@@ -12,16 +12,6 @@ import gradio as gr
 from ..tools.search_tools import search_rag, initialize_rag_database
 
 
-def _parse_year(year_value: Any) -> Tuple[bool, Any, str]:
-    """Utility to safely convert year input to int."""
-    if year_value in ("", None):
-        return True, None, ""
-    try:
-        return True, int(year_value), ""
-    except (TypeError, ValueError):
-        return False, None, "연도는 숫자로 입력해주세요."
-
-
 def create_ui(agent):
     """
     FastAPI(app.py)에서 호출할 UI 생성 함수
@@ -49,21 +39,9 @@ def create_ui(agent):
         """
         return agent.get_response(message, history)
 
-    # =========================
-    # 2) Tool helper handlers
-    # =========================
-    # def handle_movie_search(query, year, genre) -> Dict[str, Any]:
-    #     if not query:
-    #         return {"ok": False, "error": "검색어를 입력해주세요."}
-
-    #     ok, parsed_year, err = _parse_year(year)
-    #     if not ok:
-    #         return {"ok": False, "error": err}
-
-    #     return search_movies(query=query.strip(), year=parsed_year, genre=(genre or None))
     
     # =========================
-    # 3) Compose Blocks layout
+    # 2) Compose Blocks layout
     # =========================
     with gr.Blocks(title="Movie Chat Agent") as demo:
         gr.Markdown(
