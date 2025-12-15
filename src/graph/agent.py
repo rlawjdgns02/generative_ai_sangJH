@@ -26,7 +26,7 @@ class MovieChatAgent:
     - human_in_the_loop/app/agent.py의 checkpointer 활용
     """
 
-    def __init__(self, enable_memory: bool = True):
+    def __init__(self, enable_memory: bool = True, enable_interrupt: bool = False):
         """
         에이전트 초기화
 
@@ -36,10 +36,13 @@ class MovieChatAgent:
         # Short Term Memory 초기화
         self.short_term_memory = ShortTermMemory(enable=enable_memory)
         self.checkpointer = self.short_term_memory.get_checkpointer()
-        self.graph = self._build_graph()
+        # human_in_the_loop 스타일 interrupt 사용 여부는 옵션으로 제어
+        self.enable_interrupt = enable_interrupt
+        interrupt_before = ["tool"] if enable_interrupt else None
+        self.graph = self._build_graph(interrupt_before=interrupt_before)
         print(f"[INIT] MovieChatAgent 초기화 완료")
 
-    def _build_graph(self):
+    def _build_graph(self, interrupt_before=None):
         """
         LangGraph 구성
 
@@ -72,8 +75,11 @@ class MovieChatAgent:
         # Reflection → END (메모리 저장 후 종료)
         builder.add_edge("reflection", END)
 
-        # 컴파일
-        return builder.compile(checkpointer=self.checkpointer)
+        # 컴파일 (필요 시 interrupt_before 설정)
+        compile_kwargs = {"checkpointer": self.checkpointer}
+        if interrupt_before:
+            compile_kwargs["interrupt_before"] = interrupt_before
+        return builder.compile(**compile_kwargs)
 
     def invoke(self, input_data: Dict[str, Any], config: Dict[str, Any] = None):
         """
@@ -88,6 +94,37 @@ class MovieChatAgent:
 
         """
         return self.graph.stream(input_data, config=config)
+
+    # ==========================================
+    # Human-in-the-loop / Interrupt 지원용 메서드
+    # ==========================================
+    def run_with_interrupt(self, input_data: Dict[str, Any], config: Dict[str, Any] = None):
+        """
+        interrupt_before 설정을 활용한 실행 헬퍼
+
+        - 내부적으로 stream을 사용하여 이벤트를 순회합니다.
+        - 중간에 인터럽트가 발생하면 그 시점의 이벤트와 함께 반환합니다.
+        - 기존 get_response에서는 사용하지 않으므로 기존 동작에는 영향을 주지 않습니다.
+        """
+        last_event = None
+        for event in self.graph.stream(input_data, config=config):
+            last_event = event
+            # LangGraph의 human-in-the-loop 예제에서는 interrupt 이벤트를
+            # 별도의 키로 구분합니다. 여기서는 안전하게 그대로 전달만 합니다.
+            if isinstance(event, dict) and event.get("interrupted"):
+                return {"status": "interrupt", "event": event}
+
+        return {"status": "completed", "event": last_event}
+
+    def continue_after_interrupt(self, updated_input: Dict[str, Any], config: Dict[str, Any] = None):
+        """
+        인터럽트 이후 재실행 헬퍼
+
+        - checkpointer + 동일 thread_id를 활용해 이전 상태에서 이어서 실행합니다.
+        - UI/서버 레이어에서 updated_input을 만들어 전달하는 패턴을 위한 메서드입니다.
+        - 현재 Gradio/FastAPI 경로에서는 사용하지 않으므로 기존 동작에는 영향을 주지 않습니다.
+        """
+        return self.graph.invoke(updated_input, config=config)
 
     def get_response(self, user_message: str, history: List[List[str]] = None) -> str:
         """
